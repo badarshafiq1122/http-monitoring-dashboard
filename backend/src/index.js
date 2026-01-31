@@ -2,18 +2,28 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 
-const app = express();
-const PORT = process.env.PORT || 4000;
+const config = require("./config");
+const logger = require("./utils/logger");
 
-app.use(cors());
+const app = express();
+
+// CORS configuration
+app.use(
+  cors({
+    origin: config.corsOrigin,
+    credentials: true,
+  })
+);
+
+// Body parsing
 app.use(express.json());
 
 app.get("/health", (req, res) => {
   res.json({ message: "Good health" });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+app.listen(config.port, () => {
+  logger.info(`Server running on port ${config.port}`);
 });
 
 module.exports = app;
