@@ -2,7 +2,7 @@ require("dotenv").config();
 
 const config = {
   // Server
-  port: parseInt(process.env.PORT, 10) || 3001,
+  port: parseInt(process.env.PORT, 10) || 4000,
   nodeEnv: process.env.NODE_ENV || "development",
 
   //database
@@ -17,7 +17,7 @@ const config = {
 
   // Polling
   polling: {
-    intervalMinutes: parseInt(process.env.POLL_INTERVAL_MINUTES, 10) || 1,
+    intervalMinutes: parseInt(process.env.POLL_INTERVAL_MINUTES, 10) || 5,
     targetUrl: process.env.TARGET_URL || "https://httpbin.org/anything",
   },
 

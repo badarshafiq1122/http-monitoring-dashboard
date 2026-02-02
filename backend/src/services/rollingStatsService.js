@@ -25,7 +25,8 @@ async function computeAndStoreStats(windowHours = 24) {
          COALESCE(MIN(response_time_ms), 0) as min_value,
          COALESCE(MAX(response_time_ms), 0) as max_value,
          COALESCE(SUM(response_time_ms), 0) as sum_value,
-         COALESCE(SUM(response_time_ms::bigint * response_time_ms::bigint), 0) as sum_squared
+         COALESCE(SUM(response_time_ms::bigint * response_time_ms::bigint), 0) as sum_squared,
+         COUNT(*) FILTER (WHERE status_code >= 200 AND status_code < 300) as success_count
        FROM responses 
        WHERE deleted_at IS NULL
          AND created_at >= $1
@@ -34,6 +35,11 @@ async function computeAndStoreStats(windowHours = 24) {
     );
 
     const stats = statsResult.rows[0];
+    const successRate =
+      stats.sample_count > 0
+        ? (parseFloat(stats.success_count) / parseFloat(stats.sample_count)) *
+          100
+        : 0;
 
     // Insert new cache entry
     // We don't update existing entries - just insert new ones
@@ -63,6 +69,7 @@ async function computeAndStoreStats(windowHours = 24) {
       windowHours,
       sampleCount: stats.sample_count,
       mean: parseFloat(stats.mean).toFixed(2),
+      successRate: successRate.toFixed(1),
     });
 
     return {
@@ -73,6 +80,7 @@ async function computeAndStoreStats(windowHours = 24) {
       max: parseInt(stats.max_value, 10) || 0,
       sum: parseInt(stats.sum_value, 10) || 0,
       sumSquared: parseInt(stats.sum_squared, 10) || 0,
+      successRate: parseFloat(successRate.toFixed(1)),
       cached: false,
       computedAt: new Date(),
     };
@@ -95,10 +103,23 @@ async function getRollingStats(windowHours = 24) {
 
     if (cacheResult.rows.length > 0) {
       const cached = cacheResult.rows[0];
-      logger.debug("Using cached rolling stats", {
-        cachedAt: cached.created_at,
-        sampleCount: cached.sample_count,
-      });
+      // Calculate success rate from cached data by querying responses
+      const successResult = await query(
+        `SELECT COUNT(*) FILTER (WHERE status_code >= 200 AND status_code < 300) as success_count,
+                COUNT(*) as total_count
+         FROM responses
+         WHERE deleted_at IS NULL
+           AND created_at >= $1
+           AND created_at <= $2`,
+        [cached.window_start, cached.window_end]
+      );
+      const successData = successResult.rows[0];
+      const successRate =
+        successData.total_count > 0
+          ? (parseFloat(successData.success_count) /
+              parseFloat(successData.total_count)) *
+            100
+          : 0;
 
       return {
         sampleCount: parseInt(cached.sample_count, 10) || 0,
@@ -108,6 +129,7 @@ async function getRollingStats(windowHours = 24) {
         max: parseInt(cached.max_response_time, 10) || 0,
         sum: parseInt(cached.sum_response_time, 10) || 0,
         sumSquared: parseInt(cached.sum_squared, 10) || 0,
+        successRate: parseFloat(successRate.toFixed(1)),
         cached: true,
         cachedAt: cached.created_at,
       };
@@ -134,13 +156,19 @@ async function computeDirectStats(windowHours) {
        COALESCE(MIN(response_time_ms), 0) as min_value,
        COALESCE(MAX(response_time_ms), 0) as max_value,
        COALESCE(SUM(response_time_ms), 0) as sum_value,
-       COALESCE(SUM(response_time_ms::bigint * response_time_ms::bigint), 0) as sum_squared
+       COALESCE(SUM(response_time_ms::bigint * response_time_ms::bigint), 0) as sum_squared,
+       COUNT(*) FILTER (WHERE status_code >= 200 AND status_code < 300) as success_count
      FROM responses 
      WHERE deleted_at IS NULL
        AND created_at >= NOW() - INTERVAL '${windowHours} hours'`
   );
 
   const stats = result.rows[0];
+  const successRate =
+    stats.sample_count > 0
+      ? (parseFloat(stats.success_count) / parseFloat(stats.sample_count)) * 100
+      : 0;
+
   return {
     sampleCount: parseInt(stats.sample_count, 10) || 0,
     mean: parseFloat(stats.mean) || 0,
@@ -149,6 +177,7 @@ async function computeDirectStats(windowHours) {
     max: parseInt(stats.max_value, 10) || 0,
     sum: parseInt(stats.sum_value, 10) || 0,
     sumSquared: parseInt(stats.sum_squared, 10) || 0,
+    successRate: parseFloat(successRate.toFixed(1)),
     cached: false,
     computedAt: new Date(),
   };

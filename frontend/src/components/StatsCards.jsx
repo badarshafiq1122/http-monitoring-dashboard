@@ -1,27 +1,28 @@
 import { Zap, CheckCircle, Clock, AlertTriangle } from "lucide-react";
 import { formatResponseTime, formatNumber } from "../utils/formatters";
 
-export function StatsCards({ responses, anomalyStats }) {
-  // Calculate stats from responses
+export function StatsCards({ responses, anomalyStats, rollingStats }) {
+  // Use rolling statistics from backend for all metrics (24-hour window)
   const stats = {
-    totalRequests: responses.length,
-    successRate:
-      responses.length > 0
-        ? (
-            (responses.filter(
-              (r) => r.status_code >= 200 && r.status_code < 300
-            ).length /
-              responses.length) *
-            100
-          ).toFixed(1)
-        : 0,
-    avgResponseTime:
-      responses.length > 0
-        ? Math.round(
-            responses.reduce((sum, r) => sum + r.response_time_ms, 0) /
-              responses.length
-          )
-        : 0,
+    totalRequests: rollingStats?.sampleCount || 0,
+    successRate: rollingStats?.successRate
+      ? rollingStats.successRate.toFixed(1)
+      : responses.length > 0
+      ? (
+          (responses.filter((r) => r.status_code >= 200 && r.status_code < 300)
+            .length /
+            responses.length) *
+          100
+        ).toFixed(1)
+      : 0,
+    avgResponseTime: rollingStats?.mean
+      ? Math.round(rollingStats.mean)
+      : responses.length > 0
+      ? Math.round(
+          responses.reduce((sum, r) => sum + r.response_time_ms, 0) /
+            responses.length
+        )
+      : 0,
     anomalies: anomalyStats?.anomalyCount || 0,
   };
 
@@ -29,21 +30,21 @@ export function StatsCards({ responses, anomalyStats }) {
     {
       title: "Total Requests",
       value: formatNumber(stats.totalRequests),
-      subtitle: "in current view",
+      subtitle: "24-hour window",
       icon: <Zap className="w-5 h-5" />,
       color: "blue",
     },
     {
       title: "Success Rate",
       value: `${stats.successRate}%`,
-      subtitle: "2xx responses",
+      subtitle: "24-hour window",
       icon: <CheckCircle className="w-5 h-5" />,
       color: "green",
     },
     {
       title: "Avg Response",
       value: formatResponseTime(stats.avgResponseTime),
-      subtitle: "response time",
+      subtitle: "24-hour mean",
       icon: <Clock className="w-5 h-5" />,
       color: "purple",
     },

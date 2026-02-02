@@ -35,30 +35,22 @@ router.get(
 router.get(
   "/recent",
   asyncHandler(async (req, res) => {
-    const count = Math.min(
-      50,
-      Math.max(1, parseInt(req.query.count, 10) || 10)
-    );
+    const count = Math.min(50, Math.max(1, parseInt(req.query.count, 10) || 5));
     const responses = await responseRepository.getRecentResponses(count);
     res.json({ data: responses });
   })
 );
 
-// GET /api/responses/trend - Fetch response time trend data for charts (query: hours, bucket)
+// GET /api/responses/stats - Get overall statistics for the entire dataset
 router.get(
-  "/trend",
+  "/stats",
   asyncHandler(async (req, res) => {
     const hours = Math.min(
       168,
       Math.max(1, parseInt(req.query.hours, 10) || 24)
     );
-    const bucket = Math.min(
-      60,
-      Math.max(5, parseInt(req.query.bucket, 10) || 15)
-    );
-
-    const trend = await responseRepository.getResponseTimeTrend(hours, bucket);
-    res.json({ data: trend });
+    const rollingStats = await responseRepository.getRollingStats(hours);
+    res.json({ data: rollingStats });
   })
 );
 

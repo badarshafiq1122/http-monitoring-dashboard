@@ -61,10 +61,7 @@ async function getAnomalyVisualizationData(hours = 24) {
        a.rolling_mean,
        a.rolling_stddev,
        a.is_anomaly,
-       a.anomaly_type,
-       -- Calculate confidence bands (mean ± 2*stddev for ~95% confidence)
-       CASE WHEN a.rolling_stddev > 0 THEN a.rolling_mean + (2 * a.rolling_stddev) ELSE NULL END as upper_band,
-       CASE WHEN a.rolling_stddev > 0 THEN GREATEST(0, a.rolling_mean - (2 * a.rolling_stddev)) ELSE NULL END as lower_band
+       a.anomaly_type
      FROM responses r
      LEFT JOIN anomalies a ON r.id = a.response_id
      WHERE r.deleted_at IS NULL
