@@ -6,11 +6,10 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
-    "test": "NODE_ENV=test jest --coverage --detectOpenHandles",
-    "test:unit": "NODE_ENV=test jest tests/unit --coverage",
-    "test:integration": "NODE_ENV=test jest tests/integration --coverage --detectOpenHandles",
-    "lint": "eslint src/ tests/",
-    "lint:fix": "eslint src/ tests/ --fix",
+    "test": "jest --coverage",
+    "test:watch": "jest --watch",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
     "db:migrate": "node src/db/migrate.js"
   },
   "keywords": [
