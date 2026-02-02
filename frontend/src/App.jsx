@@ -1,34 +1,51 @@
 import { useState, useEffect } from "react";
 
-function App() {
-  const [healthStatus, setHealthStatus] = useState(null);
+import { Header } from "./components/Header";
+import { StatsCards } from "./components/StatsCards";
 
+import { useSSE } from "./hooks/useSSE";
+import { useResponses } from "./hooks/useResponses";
+
+import { getAnomalyStatus } from "./services/api";
+
+function App() {
+  const { isConnected, subscribe } = useSSE();
+  const { responses, addResponse } = useResponses(20);
+  const [anomalyStats, setAnomalyStats] = useState(null);
+
+  // Subscribe to new responses
   useEffect(() => {
-    fetch("/api/health")
-      .then((res) => res.json())
-      .then((data) => setHealthStatus(data.message))
-      .catch(() => setHealthStatus("Error fetching health"));
+    const unsubscribe = subscribe("new-response", (data) => {
+      addResponse(data);
+    });
+    return unsubscribe;
+  }, [subscribe, addResponse]);
+
+  // Fetch anomaly stats
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const result = await getAnomalyStatus();
+        setAnomalyStats(result.data?.stats);
+      } catch (err) {
+        console.error("Failed to fetch anomaly stats:", err);
+      }
+    };
+
+    fetchStats();
+    const interval = setInterval(fetchStats, 60000);
+    return () => clearInterval(interval);
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-          <h1 className="text-3xl font-bold text-gray-900">
-            BizScout HTTP Monitoring Dashboard
-          </h1>
-        </div>
-      </header>
-      <main>
-        <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-          <div className="px-4 py-6 sm:px-0">
-            <div className="border-4 border-dashed border-gray-200 rounded-lg p-8 text-center">
-              <p className="text-gray-600 mb-4">
-                Health Status: {healthStatus || "Loading..."}
-              </p>
-            </div>
-          </div>
-        </div>
+    <div className="min-h-screen">
+      <Header isConnected={isConnected} />
+
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Stats Overview */}
+        <section className="mb-8">
+          <StatsCards responses={responses} anomalyStats={anomalyStats} />
+        </section>
       </main>
     </div>
   );
