@@ -22,7 +22,7 @@ export function useSSE() {
       setError(null);
     };
 
-    eventSource.onerror = (err) => {
+    eventSource.onerror = () => {
       setIsConnected(false);
       setError("Connection lost. Reconnecting...");
 
